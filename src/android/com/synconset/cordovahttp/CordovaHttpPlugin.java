@@ -21,15 +21,24 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.res.AssetManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkInfo;
+import android.content.Context;
+import android.util.Log;
 
 import com.github.kevinsawicki.http.HttpRequest;
 
 public class CordovaHttpPlugin extends CordovaPlugin {
     private static final String TAG = "CordovaHTTP";
 
+    private ConnectivityManager connectivityManager;
+    private Network wifiNetwork;
+
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
+        this.connectivityManager = (ConnectivityManager) cordova.getActivity().getSystemService(Context.CONNECTIVITY_SERVICE);
     }
 
     @Override
@@ -44,11 +53,12 @@ public class CordovaHttpPlugin extends CordovaPlugin {
 
             cordova.getThreadPool().execute(post);
         } else if (action.equals("get")) {
+            this.updateCurrentWifiNetwork();
             String urlString = args.getString(0);
             Object params = args.get(1);
             JSONObject headers = args.getJSONObject(2);
             int timeoutInMilliseconds = args.getInt(3) * 1000;
-            CordovaHttpGet get = new CordovaHttpGet(urlString, params, headers, timeoutInMilliseconds, callbackContext);
+            CordovaHttpGet get = new CordovaHttpGet(urlString, params, headers, timeoutInMilliseconds, callbackContext, this.wifiNetwork);
 
             cordova.getThreadPool().execute(get);
         } else if (action.equals("put")) {
@@ -164,6 +174,22 @@ public class CordovaHttpPlugin extends CordovaPlugin {
             CordovaHttp.enableSSLPinning(true);
         } else {
             CordovaHttp.enableSSLPinning(false);
+        }
+    }
+
+    private void updateCurrentWifiNetwork() {
+        if (this.connectivityManager != null) {
+            for (Network network : this.connectivityManager.getAllNetworks()) {
+                NetworkInfo networkInfo = this.connectivityManager.getNetworkInfo(network);
+                if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                    Log.v("FORCE", "Found a WIFI network > " + networkInfo.toString());
+                    if (!network.equals(this.wifiNetwork)) {
+                        Log.v("FORCE", "Already set to that network");
+                        this.wifiNetwork = network;
+                    }
+                    break;
+                }
+            }
         }
     }
 }

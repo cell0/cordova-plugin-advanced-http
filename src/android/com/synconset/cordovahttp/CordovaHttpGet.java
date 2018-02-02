@@ -16,15 +16,20 @@ import org.json.JSONObject;
 import com.github.kevinsawicki.http.HttpRequest;
 import com.github.kevinsawicki.http.HttpRequest.HttpRequestException;
 
+import android.net.Network;
+
 class CordovaHttpGet extends CordovaHttp implements Runnable {
-    public CordovaHttpGet(String urlString, Object params, JSONObject headers, int timeout, CallbackContext callbackContext) {
+    private Network wifiNetwork;
+
+    public CordovaHttpGet(String urlString, Object params, JSONObject headers, int timeout, CallbackContext callbackContext, Network wifiNetwork) {
         super(urlString, params, headers, timeout, callbackContext);
+        this.wifiNetwork = wifiNetwork;
     }
 
     @Override
     public void run() {
         try {
-            HttpRequest request = HttpRequest.get(this.getUrlString(), this.getParamsMap(), false);
+            HttpRequest request = HttpRequest.get(this.getUrlString(), this.getParamsMap(), false, this.wifiNetwork);
 
             this.prepareRequest(request);
             this.returnResponseObject(request);

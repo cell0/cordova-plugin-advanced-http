@@ -92,6 +92,9 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
+import android.net.Network;
+import android.util.Log;
+
 /**
  * A fluid interface for making HTTP requests using an underlying
  * {@link HttpURLConnection} (or sub-class).
@@ -265,6 +268,8 @@ public class HttpRequest {
 
   private static final String[] EMPTY_STRINGS = new String[0];
 
+  private static Network FORCE_OVER_NETWORK;
+
   private static SSLSocketFactory PINNED_FACTORY;
 
   private static SSLSocketFactory TRUSTED_FACTORY;
@@ -414,10 +419,18 @@ public class HttpRequest {
      */
     ConnectionFactory DEFAULT = new ConnectionFactory() {
       public HttpURLConnection create(URL url) throws IOException {
+        if (FORCE_OVER_NETWORK != null) {
+          Log.v("FORCE", "Forcing request over Wifi");
+          return (HttpURLConnection) FORCE_OVER_NETWORK.openConnection(url);
+        }
         return (HttpURLConnection) url.openConnection();
       }
 
       public HttpURLConnection create(URL url, Proxy proxy) throws IOException {
+        if (FORCE_OVER_NETWORK != null) {
+          Log.v("FORCE", "Forcing request over Wifi");
+          return (HttpURLConnection) FORCE_OVER_NETWORK.openConnection(url, proxy);
+        }
         return (HttpURLConnection) url.openConnection(proxy);
       }
     };
@@ -1092,6 +1105,31 @@ public class HttpRequest {
    */
   public static HttpRequest get(final CharSequence baseUrl,
       final Map<?, ?> params, final boolean encode) {
+    String url = append(baseUrl, params);
+    return get(encode ? encode(url) : url);
+  }
+
+  /**
+   * Start a 'GET' request to the given URL along with the query params
+   *
+   * @param baseUrl
+   * @param params
+   *          The query parameters to include as part of the baseUrl
+   * @param encode
+   *          true to encode the full URL
+   * @param network
+   *          Force connection over this Network, or null to not force over a specific Network
+   *
+   * @see #append(CharSequence, Map)
+   * @see #encode(CharSequence)
+   *
+   * @return request
+   */
+  public static HttpRequest get(final CharSequence baseUrl,
+                                final Map<?, ?> params,
+                                final boolean encode,
+                                final Network network) {
+    FORCE_OVER_NETWORK = network;
     String url = append(baseUrl, params);
     return get(encode ? encode(url) : url);
   }
